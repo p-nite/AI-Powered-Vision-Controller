@@ -1,50 +1,89 @@
 # AI-Powered Vision Controller
 
-An AI-driven, real-time hand gesture recognition system that allows users to control OS-level multimedia actions without touching the keyboard or mouse. 
+> 🚧 **Work in progress** — media control works today; an air-drawing charades game is under development (see [Roadmap](#roadmap)).
 
-This project leverages Google's MediaPipe for robust hand tracking and OpenCV for video processing, translating physical movements into direct system commands via PyAutoGUI.
+Control your computer's media playback with hand gestures in front of a webcam — no keyboard or mouse.
 
-## Features
+The webcam feed is processed with **OpenCV**, Google's **MediaPipe** machine-learning model locates 21 landmarks on the hand in real time, and a rule-based classifier turns their positions and movement into gestures. Each gesture is sent to the operating system as a media key through **PyAutoGUI**, so it works with any player (Spotify, YouTube, VLC…).
 
-Currently, the system maps the following hand gestures to media controls:
+## Gestures
 
-* **Pinch:** Play / Pause
-* **Swipe Up:** Volume Up
-* **Swipe Down:** Volume Down
-* **Swipe Left:** Previous Track
-* **Swipe Right:** Next Track
-* **Closed Fist:** Mute / Unmute
+| Gesture | Action |
+|---|---|
+| Pinch (thumb and index finger together) | Play / Pause |
+| Swipe up | Volume up |
+| Swipe down | Volume down |
+| Swipe left | Previous track |
+| Swipe right | Next track |
+| Closed fist | Mute / Unmute |
 
-*An internal cooldown mechanism is implemented to prevent input spamming and ensure smooth OS interactions.*
+A 2-second cooldown between actions prevents a single movement from firing the same command several times.
+
+## How It Works
+
+```
+Webcam frame ──► OpenCV ──► MediaPipe Hands ──► GestureTracker ──► MediaController ──► OS media key
+                (capture,   (21 hand landmarks)  (rules: folded      (cooldown +        (PyAutoGUI)
+                 mirror)                          fingers, pinch,     key mapping)
+                                                  swipe direction)
+```
+
+| Module | Responsibility |
+|---|---|
+| [`src/app.py`](src/app.py) | Main loop: reads the webcam, runs the tracker, shows the video window |
+| [`src/gestureController/tracker.py`](src/gestureController/tracker.py) | Detects the hand with MediaPipe and classifies the gesture |
+| [`src/mediaController/controller.py`](src/mediaController/controller.py) | Maps gestures to media keys and applies the cooldown |
 
 ## Tech Stack
 
-* **Python 3.11.9**
-* **MediaPipe:** Hand landmark detection and tracking.
-* **OpenCV (`cv2`):** Real-time webcam video capture and image processing.
-* **PyAutoGUI:** Cross-platform GUI automation to execute keyboard shortcuts.
+- **Python 3.11**
+- **MediaPipe** — hand landmark detection and tracking
+- **OpenCV** — webcam capture and video display
+- **PyAutoGUI** — sends media keys to the operating system
 
 ## How to Run
 
-**1. Clone the repository:**
-`git clone https://github.com/p-nite/AI-Powered-Vision-Controller.git`
-`cd AI-Powered-Vision-Controller`
+Developed on Windows; any webcam supported by OpenCV should work.
 
-**2. Install dependencies:**
-Make sure you have Python installed. Then, install the required libraries:
-`pip install opencv-python mediapipe pyautogui`
+**1. Clone the repository**
 
-**3. Run the application:**
-`python app.py`
+```bash
+git clone https://github.com/p-nite/AI-Powered-Vision-Controller.git
+cd AI-Powered-Vision-Controller
+```
 
-*(Press `Ctrl+C` in the terminal or close the webcam window to stop the execution).*
+**2. Create a virtual environment and install the dependencies**
 
-## Roadmap / Future Implementations
+```bash
+python -m venv venv
+venv\Scripts\activate        # Windows
+source venv/bin/activate     # macOS / Linux
+pip install -r requirements.txt
+```
 
-This project is actively in development. Upcoming features include:
+**3. Run from the project root**
 
-* **Tracker Optimization:** Refine the coordinate calculation logic to improve gesture accuracy and minimize latency.
-* **Charades Game Mode:** Introduce a new interactive mode where holding a "Pinch" gesture allows the user to draw on the screen (mimicking holding a pencil) to play charades.
+```bash
+python -m src.app
+```
+
+The app must be started as a module from the project root (`-m src.app`), because its imports are relative to the `src` package. Press **Esc** in the video window to quit.
+
+## Known Limitations
+
+- **Pinch** compares only the vertical position of the thumb and index fingertips, so some hand poses trigger it by accident.
+- **Swipes** use a fixed threshold in pixels, so they become harder to trigger the further the hand is from the camera.
+- Gesture rules are hand-written; adding a new gesture means writing new rules.
+
+These are addressed in the first phases of the roadmap.
+
+## Roadmap
+
+1. **Air drawing** — draw on screen while pinching: pinch measured as the real thumb–index distance relative to hand size, separate start/stop thresholds so strokes don't break, and smoothing to remove landmark jitter.
+2. **Charades game** — one player draws a word in the air while the others guess, with turns, a timer and scores.
+3. **Tests** — unit tests for gesture detection and game rules.
+4. **Trained gesture classifier** — replace the hand-written rules with a small model trained on recorded hand landmarks, so new gestures can be taught instead of coded.
+5. **AI guesser** — a CNN trained on a subset of Google's *Quick, Draw!* dataset that guesses the drawing in real time, as a "play against the AI" mode.
 
 ## License
 
